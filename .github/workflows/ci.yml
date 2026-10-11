@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # topics.example.yaml でバンドルと CloudFormation の生成まで通す（AWS には触らない）
+      - run: npm run synth
+        env:
+          TOPICS_FILE: topics.example.yaml
+          RECIPIENT_EMAIL: to@example.com
+          SENDER_EMAIL: from@example.com

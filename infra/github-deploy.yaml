@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: GitHub Actions から長期キーなしで cdk deploy するための IAM ロール（OIDC）
+
+# このスタックだけは CDK の外に置き、初回に手元の AWS 認証情報で作る。
+# deploy workflow が自分の権限を書き換えられないようにするため。
+#
+#   aws cloudformation deploy \
+#     --template-file infra/github-deploy.yaml \
+#     --stack-name morning-briefing-agent-github-deploy \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides GitHubRepository=<owner>/<repo>
+#
+# ロールにできるのは「CDK のブートストラップロールを引き受ける」ことだけ。
+# 引き受けられるのは、そのリポジトリの GitHub Environment「production」で動く job だけ
+# （production は main ブランチだけに許可しておく）。
+# GitHub の OIDC プロバイダがアカウントに無ければ、先に作っておく（1アカウントに1つ）。
+
+Parameters:
+  GitHubRepository:
+    Type: String
+    Description: owner/repo
+    AllowedPattern: '[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+'
+
+Resources:
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Run cdk deploy for morning-briefing-agent from GitHub Actions (production environment only)
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com'
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubRepository}:environment:production'
+      Policies:
+        - PolicyName: assume-cdk-bootstrap-roles
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/cdk-hnb659fds-*-${AWS::AccountId}-${AWS::Region}'
+
+Outputs:
+  DeployRoleArn:
+    Value: !GetAtt DeployRole.Arn

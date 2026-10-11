@@ -1,0 +1,37 @@
+{
+  "name": "morning-briefing-agent",
+  "version": "0.1.0",
+  "description": "毎朝ニュースを集めて Claude で1回だけ採点し、決定的なコードで選んだ見出しをメールで届ける AWS Lambda のテンプレート",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p infra/tsconfig.json",
+    "test": "node --import tsx --test test/*.test.ts",
+    "build": "node scripts/build.mjs",
+    "local": "tsx scripts/run-local.ts",
+    "synth": "npm run build && cd infra && cdk synth --quiet",
+    "deploy": "npm run build && cd infra && cdk deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.102.0",
+    "@aws-sdk/client-s3": "^3.1015.0",
+    "@aws-sdk/client-ses": "^3.1014.0",
+    "@aws-sdk/client-ssm": "^3.1014.0",
+    "js-yaml": "^4.1.1",
+    "research-hub-mcp": "github:pyonta0215/research-hub-mcp#v0.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24",
+    "aws-cdk": "^2.1138.0",
+    "aws-cdk-lib": "^2.244.0",
+    "constructs": "^10.5.1",
+    "esbuild": "^0.27.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

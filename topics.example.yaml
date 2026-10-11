@@ -1,0 +1,42 @@
+# 収集するトピック。cp topics.example.yaml topics.yaml でコピーして編集する（topics.yaml は自分用）。
+#
+#   id        英小文字・数字・_。LLM の出力スキーマのキーになる
+#   label     メールの見出し
+#   urls      一次情報の RSS / Atom / RDF（HTML も読めるが、記事URLが取れないのでフィードを推奨）
+#   keywords  Google News の検索結果 RSS を収集源に足す（OR 検索・前日以降）
+#   maxItems  1通に載せる上限（既定 8）
+#   research  Hacker News / arXiv / GitHub / RSS から足す（research-hub-mcp。外部APIの費用は0）
+topics:
+  - id: ai
+    label: AI
+    maxItems: 6
+    keywords: [Claude, GPT, Gemini, LLM, 生成AI]
+    urls:
+      - https://openai.com/news/rss.xml
+      - https://deepmind.google/blog/rss.xml
+    research:
+      search:
+        # HN の検索は語を AND で扱うので、1語ずつ投げる
+        queries: [Claude, OpenAI, LLM]
+        sources: [hackernews]
+        since: 2d
+        limit: 3
+
+  - id: dev
+    label: 開発・OSS
+    maxItems: 4
+    keywords: []
+    urls: []
+    research:
+      trending:
+        - source: github
+          category: typescript
+          period: week
+          limit: 5
+
+  - id: paper
+    label: AI論文
+    maxItems: 3
+    keywords: []
+    urls:
+      - https://rss.arxiv.org/rss/cs.CL

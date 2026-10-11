@@ -1,0 +1,52 @@
+name: deploy
+
+# main に push したらデプロイする。AWS へは OIDC で入り、長期のアクセスキーは置かない。
+# リポジトリ変数 AWS_DEPLOY_ROLE_ARN が無ければ何もしない（fork してすぐは CI だけが動く）。
+# 準備の手順は docs/deploy-github-actions.md。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    if: vars.AWS_DEPLOY_ROLE_ARN != '' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # topics.yaml は自分用なのでリポジトリに置かない場合がある。そのときは変数 TOPICS_YAML に中身を入れる
+      - name: topics.yaml
+        env:
+          TOPICS_YAML: ${{ vars.TOPICS_YAML }}
+        run: |
+          if [ -n "$TOPICS_YAML" ]; then printf '%s\n' "$TOPICS_YAML" > topics.yaml; fi
+          test -f topics.yaml || cp topics.example.yaml topics.yaml
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: npm run build
+      - working-directory: infra
+        run: npx cdk deploy --require-approval never
+        env:
+          RECIPIENT_EMAIL: ${{ vars.RECIPIENT_EMAIL }}
+          SENDER_EMAIL: ${{ vars.SENDER_EMAIL }}
+          SCHEDULE: ${{ vars.SCHEDULE }}
+          TIME_ZONE: ${{ vars.TIME_ZONE }}
